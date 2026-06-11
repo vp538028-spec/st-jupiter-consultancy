@@ -1,0 +1,15 @@
+{
+  "name": "st-jupiter-consultancy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ST Jupiter Consultancy doctor jobs and hospital recruitment website.",
+  "scripts": {
+    "build": "node build.js",
+    "start": "node server.js",
+    "serve": "node server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.19.0"
+  },
+  "devDependencies": {}
+}

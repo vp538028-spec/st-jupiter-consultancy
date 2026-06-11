@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hospital Dashboard | ST Jupiter Consultancy</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.png" alt="ST Jupiter Consultancy" /></a>
+      <nav class="nav-links"><a href="/">Home</a><a href="/pages/doctors.html">Find Doctors</a><a href="/pages/post-job.html">Recruitment</a><a href="/pages/contact.html">Support</a></nav>
+      <div class="header-actions"><button class="header-call" type="button" data-logout>Logout</button></div>
+      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+    <main class="dashboard-app" data-hospital-dashboard>
+      <aside class="dashboard-sidebar">
+        <img class="dashboard-avatar" src="/assets/logo.png" alt="Hospital profile" />
+        <strong>Hospital Panel</strong>
+        <span data-hospital-email></span>
+        <nav>
+          <a href="#overview">Overview</a>
+          <a href="/pages/post-job.html">Post Requirement</a>
+          <a href="#posted">Posted Jobs</a>
+          <a href="#candidates">Candidate Management</a>
+          <a href="/pages/complete-profile.html">Hospital Profile</a>
+          <a href="#support">Support</a>
+        </nav>
+      </aside>
+      <section class="dashboard-content">
+        <div class="dashboard-top" id="overview">
+          <p class="eyebrow">Hospital Dashboard</p>
+          <h1>Manage hiring requirements</h1>
+          <p>Doctor recruitment, posted jobs, candidates, aur consultant support.</p>
+        </div>
+        <section class="admin-stats">
+          <div class="hero-stats">
+            <span><strong data-hospital-post-count>0</strong> Jobs Posted</span>
+            <span><strong data-hospital-active-count>0</strong> Active Requirements</span>
+            <span><strong>CRM</strong> Connected</span>
+          </div>
+        </section>
+        <section class="dashboard-panel" id="posted">
+          <div class="section-heading split">
+            <div><p class="section-kicker">Posted Jobs</p><h2>Your hiring posts</h2></div>
+            <a class="btn primary" href="/pages/post-job.html">Post a Job</a>
+          </div>
+          <div class="job-grid" data-hospital-jobs></div>
+        </section>
+        <section class="dashboard-panel" id="candidates">
+          <p class="section-kicker">Candidate Management</p>
+          <h2>Shortlisting support</h2>
+          <div class="trust-list">
+            <div><strong>Applications Review</strong><span>Admin CRM applications review karke shortlist karega.</span></div>
+            <div><strong>Requirement Tracking</strong><span>All job posts CRM mein copy hote hain.</span></div>
+            <div><strong>Consultant Follow-up</strong><span>ST Jupiter team hiring status share karegi.</span></div>
+          </div>
+        </section>
+        <section class="dashboard-panel" id="support">
+          <p class="section-kicker">Support</p>
+          <h2>Talk to recruitment team</h2>
+          <form class="chat-form" data-chat-form>
+            <input type="text" name="message" placeholder="Ask about hiring status..." required />
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+        </section>
+      </section>
+    </main>
+    <script src="/script.js"></script>
+  </body>
+</html>

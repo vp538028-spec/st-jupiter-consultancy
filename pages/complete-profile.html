@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complete Profile | ST Jupiter Consultancy</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.png" alt="ST Jupiter Consultancy" /></a>
+      <nav class="nav-links"><a href="/">Home</a><a href="/pages/jobs.html">Jobs</a><a href="/pages/contact.html">Contact Us</a></nav>
+      <div class="header-actions"><button class="header-call" type="button" data-logout>Logout</button></div>
+      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+    <main class="page-main auth-page" data-profile-page>
+      <section class="page-hero">
+        <p class="eyebrow">Required Details</p>
+        <h1>Complete your profile</h1>
+        <p>Login ke baad dashboard open hone se pehle details fill karna required hai.</p>
+      </section>
+      <section class="auth-shell single-auth">
+        <form class="auth-card" data-profile-form>
+          <p class="section-kicker">Profile Setup</p>
+          <h2 data-profile-title>Details</h2>
+          <div data-doctor-fields>
+            <label>Specialty<input type="text" name="specialty" placeholder="Cardiologist, Radiologist..." /></label>
+            <label>Location<input type="text" name="location" placeholder="New York, USA / Delhi NCR" /></label>
+            <label>Experience<input type="text" name="experience" placeholder="5 years" /></label>
+            <label>Qualification<input type="text" name="qualification" placeholder="MBBS, MD, MS..." /></label>
+            <label>Resume Notes<textarea name="resumeNote" rows="4" placeholder="CV summary / certifications"></textarea></label>
+          </div>
+          <div data-hospital-fields hidden>
+            <label>Hospital Name<input type="text" name="hospitalName" placeholder="Hospital name" /></label>
+            <label>Location<input type="text" name="location" placeholder="City, state, country" /></label>
+            <label>Contact Person<input type="text" name="contactPerson" placeholder="HR / owner name" /></label>
+            <label>Hiring Needs<textarea name="hiringNeeds" rows="4" placeholder="Doctor specialties required"></textarea></label>
+          </div>
+          <button class="btn primary" type="submit">Save & Continue</button>
+        </form>
+      </section>
+    </main>
+    <script src="/script.js"></script>
+  </body>
+</html>
+
+

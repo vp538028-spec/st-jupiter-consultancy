@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Dashboard | ST Jupiter Consultancy</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.png" alt="ST Jupiter Consultancy" /></a>
+      <nav class="nav-links"><a href="/">Home</a><a href="/pages/jobs.html">Jobs</a><a href="/pages/usa-jobs.html">Quick Jobs</a><a href="/pages/contact.html">Support</a></nav>
+      <div class="header-actions"><button class="header-call" type="button" data-logout>Logout</button></div>
+      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+    <main class="dashboard-app" data-dashboard>
+      <aside class="dashboard-sidebar">
+        <img class="dashboard-avatar" src="/assets/logo.png" alt="Doctor profile" data-profile-preview />
+        <strong data-user-name>Doctor</strong>
+        <span data-user-email></span>
+        <nav>
+          <a href="#overview">Overview</a>
+          <a href="#profile">Profile Update</a>
+          <a href="#cv">CV Upload</a>
+          <a href="#applied">Applied Jobs</a>
+          <a href="#recommended">Recommended Jobs</a>
+          <a href="#chat">Team Support Chat</a>
+          <a href="#settings">Settings</a>
+        </nav>
+      </aside>
+      <section class="dashboard-content">
+        <div class="dashboard-top" id="overview">
+          <p class="eyebrow">Doctor Dashboard</p>
+          <h1>Welcome, <span data-user-name>Doctor</span></h1>
+          <p><span data-user-email></span> · <span data-user-type>Doctor</span></p>
+          <div class="profile-summary" data-profile-summary></div>
+        </div>
+        <section class="dashboard-panel" id="profile">
+          <div class="section-heading split">
+            <div><p class="section-kicker">Profile</p><h2>Update doctor profile</h2></div>
+            <a class="btn secondary" href="/pages/complete-profile.html">Edit Full Profile</a>
+          </div>
+          <div class="dashboard-grid-2">
+            <label>Profile Image<input type="file" accept="image/*" data-profile-image /></label>
+            <label>Specialty<input type="text" placeholder="Cardiologist, Radiologist..." data-profile-specialty /></label>
+            <label>Location<input type="text" placeholder="New York, USA" data-profile-location /></label>
+            <label>Experience<input type="text" placeholder="5 years" data-profile-experience /></label>
+            <label>Qualification<input type="text" placeholder="MBBS, MD, DNB..." data-profile-qualification /></label>
+            <label>Profile Note<input type="text" placeholder="OPD, ICU, emergency coverage..." data-profile-resume-note /></label>
+          </div>
+          <button class="btn primary" type="button" data-save-profile-assets>Save Profile</button>
+        </section>
+        <section class="dashboard-panel" id="cv">
+          <p class="section-kicker">CV Upload</p>
+          <h2>Upload or update CV</h2>
+          <p class="muted-text">PDF/DOC/DOCX file upload kar sakte hain PC ya phone se.</p>
+          <div class="dashboard-grid-2">
+            <label>CV File<input type="file" accept=".pdf,.doc,.docx" data-cv-file /></label>
+            <label>CV Status<input type="text" data-cv-status value="No CV uploaded" readonly /></label>
+          </div>
+          <button class="btn primary" type="button" data-upload-cv>Upload CV</button>
+        </section>
+        <section class="dashboard-panel" id="applied">
+          <div class="section-heading"><p class="section-kicker">Applied Jobs</p><h2>Jobs you applied for</h2></div>
+          <div class="job-grid" data-applied-jobs></div>
+        </section>
+        <section class="dashboard-panel" id="recommended">
+          <div class="section-heading"><p class="section-kicker">Recommended Jobs</p><h2>Suggested openings</h2></div>
+          <div class="job-grid" data-dashboard-jobs></div>
+        </section>
+        <section class="dashboard-panel" id="chat">
+          <p class="section-kicker">Team Support</p>
+          <h2>Live chat with ST Jupiter team</h2>
+          <div class="chat-box" data-chat-box>
+            <p><strong>Support:</strong> Tell us which applied job you need update for.</p>
+          </div>
+          <form class="chat-form" data-chat-form>
+            <input type="text" name="message" placeholder="Ask about application update..." required />
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+        </section>
+        <section class="dashboard-panel" id="settings">
+          <p class="section-kicker">Settings</p>
+          <h2>Account settings</h2>
+          <p>Email change locked for account security. Other profile details can be updated.</p>
+        </section>
+      </section>
+    </main>
+    <script src="/script.js"></script>
+  </body>
+</html>

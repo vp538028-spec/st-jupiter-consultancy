@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>USA Doctor Jobs | ST Jupiter Consultancy</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.png" alt="ST Jupiter Consultancy" /></a>
+      <nav class="nav-links"><a href="/">Home</a><a href="/pages/jobs.html">Jobs</a><a href="/pages/hospitals.html">Hospitals</a><a href="/pages/contact.html">Contact Us</a></nav>
+      <div class="header-actions"><a class="login-link" href="/pages/register.html">Login / Register</a><a class="header-call" href="/pages/post-job.html">Post a Job</a></div>
+      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+    <main class="page-main">
+      <section class="page-hero">
+        <p class="eyebrow">USA Jobs</p>
+        <h1>USA doctor requirements</h1>
+        <p>USA area, specialty, location, aur job type ke hisaab se latest requirements.</p>
+      </section>
+      <section class="search-band page-search">
+        <form class="job-search">
+          <label>Specialty<select name="specialty"></select></label>
+          <label>Location<select name="location"></select></label>
+          <label>Job Type<select name="jobType"></select></label>
+          <button class="btn primary" type="submit">Find Jobs</button>
+        </form>
+      </section>
+      <section class="section jobs">
+        <div class="section-heading"><p class="section-kicker">USA Requirements</p><h2>Matching jobs</h2></div>
+        <div class="job-grid" data-job-results></div>
+      </section>
+    </main>
+    <script src="/script.js"></script>
+  </body>
+</html>
+
+
