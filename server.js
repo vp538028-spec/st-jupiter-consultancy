@@ -397,6 +397,7 @@ const adminExportColumns = {
     { label: "Name", value: (row) => row.name },
     { label: "Email", value: (row) => row.email },
     { label: "Account Type", value: (row) => row.accountType },
+    { label: "Phone", value: (row) => row.profile?.phone || "" },
     { label: "Profile Complete", value: (row) => row.profileComplete ? "Yes" : "No" },
     { label: "Specialty", value: (row) => row.profile?.specialty || "" },
     { label: "Location", value: (row) => row.profile?.location || "" },
@@ -410,6 +411,7 @@ const adminExportColumns = {
   ],
   jobs: [
     { label: "Hospital", value: (row) => row.hospitalName },
+    { label: "Hospital Phone", value: (row) => row.phone },
     { label: "Email", value: (row) => row.email },
     { label: "Specialty", value: (row) => row.specialty },
     { label: "Location", value: (row) => row.location },
@@ -425,16 +427,64 @@ const adminExportColumns = {
     { label: "Created At", value: (row) => row.createdAt }
   ],
   applications: [
+    { label: "Doctor Name", value: (row) => row.doctorName },
     { label: "Doctor Email", value: (row) => row.doctorEmail },
+    { label: "Doctor Phone", value: (row) => row.doctorPhone },
     { label: "Doctor Type", value: (row) => row.doctorType },
     { label: "Specialty", value: (row) => row.specialty },
+    { label: "Doctor Experience", value: (row) => row.doctorExperience },
+    { label: "Doctor Qualification", value: (row) => row.doctorQualification },
+    { label: "CV File", value: (row) => row.doctorCvFile },
     { label: "Hospital", value: (row) => row.hospitalName },
+    { label: "Hospital Email", value: (row) => row.hospitalEmail },
+    { label: "Hospital Phone", value: (row) => row.hospitalPhone },
     { label: "Location", value: (row) => row.location },
     { label: "Job Type", value: (row) => row.jobType },
     { label: "Message", value: (row) => row.message },
     { label: "Created At", value: (row) => row.createdAt }
   ]
 };
+
+function doctorSnapshot(user = {}) {
+  const profile = user.profile || {};
+  return {
+    doctorName: user.name || "",
+    doctorEmail: user.email || "",
+    doctorPhone: profile.phone || "",
+    doctorSpecialty: profile.specialty || "",
+    doctorLocation: profile.location || "",
+    doctorExperience: profile.experience || "",
+    doctorQualification: profile.qualification || "",
+    doctorResumeNote: profile.resumeNote || "",
+    doctorCvFile: user.assets?.cv?.name || "",
+    doctorCvUploadedAt: user.assets?.cv?.uploadedAt || ""
+  };
+}
+
+async function enrichApplications(db, applications) {
+  const ids = applications
+    .map((application) => application.userId)
+    .filter((id) => ObjectId.isValid(String(id)))
+    .map((id) => new ObjectId(String(id)));
+
+  if (!ids.length) return applications;
+
+  const doctors = await db.collection("users").find(
+    { _id: { $in: ids } },
+    { projection: { passwordHash: 0 } }
+  ).toArray();
+  const doctorMap = new Map(doctors.map((doctor) => [String(doctor._id), doctorSnapshot(doctor)]));
+
+  return applications.map((application) => ({
+    ...doctorMap.get(String(application.userId)),
+    ...application
+  }));
+}
+
+async function fetchAdminDataset(db, dataset, query, sortDirection, limit) {
+  const records = await fetchAdminCollection(db, dataset, query, sortDirection, limit);
+  return dataset === "applications" ? enrichApplications(db, records) : records;
+}
 
 async function handleApi(req, res) {
   try {
@@ -511,6 +561,7 @@ async function handleApi(req, res) {
       const accountType = String(authUser.accountType || "");
       const profile = accountType.toLowerCase().includes("doctor")
         ? {
+            phone: cleanText(body.phone),
             specialty: cleanText(body.specialty),
             location: cleanText(body.location),
             experience: cleanText(body.experience),
@@ -519,6 +570,7 @@ async function handleApi(req, res) {
           }
         : {
             hospitalName: cleanText(body.hospitalName),
+            phone: cleanText(body.phone),
             location: cleanText(body.location),
             contactPerson: cleanText(body.contactPerson),
             hiringNeeds: cleanText(body.hiringNeeds)
@@ -607,13 +659,20 @@ async function handleApi(req, res) {
       const authUser = verifyToken(req);
       if (!authUser) return sendJson(res, 401, { message: "Login required to apply." });
       const body = await readBody(req);
+      const doctor = await db.collection("users").findOne(
+        { _id: new ObjectId(authUser.id) },
+        { projection: { passwordHash: 0 } }
+      );
       const application = {
         userId: new ObjectId(authUser.id),
+        ...doctorSnapshot(doctor || authUser),
         doctorEmail: authUser.email,
         doctorType: authUser.accountType,
         jobId: cleanText(body.jobId),
         specialty: cleanText(body.specialty),
         hospitalName: cleanText(body.hospitalName),
+        hospitalEmail: cleanText(body.email || body.hospitalEmail).toLowerCase(),
+        hospitalPhone: cleanText(body.phone || body.hospitalPhone),
         location: cleanText(body.location),
         jobType: cleanText(body.jobType),
         message: cleanText(body.message),
@@ -628,6 +687,7 @@ async function handleApi(req, res) {
       const body = await readBody(req);
       const job = {
         hospitalName: cleanText(body.hospitalName),
+        phone: cleanText(body.phone),
         email: cleanText(body.email).toLowerCase(),
         specialty: cleanText(body.specialty),
         location: cleanText(body.location),
@@ -652,10 +712,10 @@ async function handleApi(req, res) {
       const sortDirection = options.order === "oldest" ? 1 : -1;
 
       const [users, jobs, contacts, applications, userCount, jobCount, contactCount, applicationCount] = await Promise.all([
-        fetchAdminCollection(db, "users", query, sortDirection, options.limit),
-        fetchAdminCollection(db, "jobs", query, sortDirection, options.limit),
-        fetchAdminCollection(db, "contacts", query, sortDirection, options.limit),
-        fetchAdminCollection(db, "applications", query, sortDirection, options.limit),
+        fetchAdminDataset(db, "users", query, sortDirection, options.limit),
+        fetchAdminDataset(db, "jobs", query, sortDirection, options.limit),
+        fetchAdminDataset(db, "contacts", query, sortDirection, options.limit),
+        fetchAdminDataset(db, "applications", query, sortDirection, options.limit),
         db.collection("users").countDocuments(query),
         db.collection("jobs").countDocuments(query),
         db.collection("contacts").countDocuments(query),
@@ -690,7 +750,7 @@ async function handleApi(req, res) {
         : [options.dataset];
 
       const records = await Promise.all(
-        selectedDatasets.map((dataset) => fetchAdminCollection(db, dataset, query, sortDirection, options.limit))
+        selectedDatasets.map((dataset) => fetchAdminDataset(db, dataset, query, sortDirection, options.limit))
       );
 
       const sheets = selectedDatasets.map((dataset, index) => {

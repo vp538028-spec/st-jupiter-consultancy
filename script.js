@@ -209,8 +209,13 @@ function renderJobs(container, jobs) {
             jobId: job._id,
             specialty: job.specialty,
             hospitalName: job.hospitalName,
+            hospitalEmail: job.email,
+            hospitalPhone: job.phone,
+            email: job.email,
+            phone: job.phone,
             location: job.location,
-            jobType: job.jobType
+            jobType: job.jobType,
+            message: job.message
           }).replace(/'/g, "&apos;");
 
           return `
@@ -249,6 +254,7 @@ function renderProfileSummary(container, user) {
   if (!container) return;
   const profile = user?.profile || {};
   container.innerHTML = `
+    <div><strong>Phone</strong><span>${profileValue(profile, "phone")}</span></div>
     <div><strong>Specialty</strong><span>${profileValue(profile, "specialty")}</span></div>
     <div><strong>Location</strong><span>${profileValue(profile, "location")}</span></div>
     <div><strong>Experience</strong><span>${profileValue(profile, "experience")}</span></div>
@@ -262,6 +268,7 @@ function fillDoctorProfileFields(root, user) {
   if (!root) return;
   const profile = user?.profile || {};
   const fields = {
+    "[data-profile-phone]": profile.phone,
     "[data-profile-specialty]": profile.specialty,
     "[data-profile-location]": profile.location,
     "[data-profile-experience]": profile.experience,
@@ -510,6 +517,14 @@ document.querySelector("[data-save-profile-assets]")?.addEventListener("click", 
   try {
     button.disabled = true;
     button.textContent = "Saving...";
+    await postJson("/api/profile", {
+      phone: document.querySelector("[data-profile-phone]")?.value || "",
+      specialty: document.querySelector("[data-profile-specialty]")?.value || "",
+      location: document.querySelector("[data-profile-location]")?.value || "",
+      experience: document.querySelector("[data-profile-experience]")?.value || "",
+      qualification: document.querySelector("[data-profile-qualification]")?.value || "",
+      resumeNote: document.querySelector("[data-profile-resume-note]")?.value || ""
+    }, localStorage.getItem("stj_token"));
     if (file) {
       const result = await saveProfileAsset("profileImage", file);
       if (result?.asset?.dataUrl) {
@@ -588,6 +603,7 @@ async function loadHospitalDashboard() {
     if (hospitalProfile) {
       hospitalProfile.innerHTML = `
         <div><strong>Hospital</strong><span>${escapeHtml(profile.hospitalName || data.user?.name || "Not added")}</span></div>
+        <div><strong>Phone</strong><span>${escapeHtml(profile.phone || "Not added")}</span></div>
         <div><strong>Location</strong><span>${escapeHtml(profile.location || "Not added")}</span></div>
         <div><strong>Contact Person</strong><span>${escapeHtml(profile.contactPerson || "Not added")}</span></div>
         <div><strong>Hiring Needs</strong><span>${escapeHtml(profile.hiringNeeds || "Not added")}</span></div>
@@ -696,10 +712,13 @@ function renderAdminTables() {
   const contacts = adminData.contacts.filter((contact) => matchesSearch(contact, contactsTerm));
   const applications = adminData.applications.filter((application) => matchesSearch(application, applicationsTerm));
 
-  adminRoot.querySelector("[data-admin-jobs]").innerHTML = jobs.map((job) => `<tr><td>${job.specialty || ""}</td><td>${job.location || ""}</td><td>${job.jobType || ""}</td><td>${job.hospitalName || ""}</td><td><button class="btn compact" type="button" data-admin-job-delete="${job._id}">Delete</button></td></tr>`).join("");
-  adminRoot.querySelector("[data-admin-users]").innerHTML = users.map((user) => `<tr><td>${user.name || ""}</td><td>${user.email || ""}</td><td>${user.accountType || ""}</td></tr>`).join("");
+  adminRoot.querySelector("[data-admin-jobs]").innerHTML = jobs.map((job) => `<tr><td>${job.hospitalName || ""}</td><td>${job.phone || ""}</td><td>${job.email || ""}</td><td>${job.specialty || ""}</td><td>${job.location || ""}</td><td>${job.jobType || ""}</td><td><button class="btn compact" type="button" data-admin-job-delete="${job._id}">Delete</button></td></tr>`).join("");
+  adminRoot.querySelector("[data-admin-users]").innerHTML = users.map((user) => {
+    const profile = user.profile || {};
+    return `<tr><td>${user.name || ""}</td><td>${profile.phone || ""}</td><td>${user.email || ""}</td><td>${user.accountType || ""}</td><td>${profile.specialty || profile.hospitalName || ""}</td><td>${profile.location || ""}</td></tr>`;
+  }).join("");
   adminRoot.querySelector("[data-admin-contacts]").innerHTML = contacts.map((contact) => `<tr><td>${contact.name || ""}</td><td>${contact.phone || ""}</td><td>${contact.role || ""}</td><td>${contact.message || ""}</td></tr>`).join("");
-  adminRoot.querySelector("[data-admin-applications]").innerHTML = applications.map((application) => `<tr><td>${application.doctorEmail || ""}</td><td>${application.specialty || ""}</td><td>${application.location || ""}</td><td>${application.hospitalName || ""}</td><td>${application.jobType || ""}</td></tr>`).join("");
+  adminRoot.querySelector("[data-admin-applications]").innerHTML = applications.map((application) => `<tr><td>${application.doctorName || ""}</td><td>${application.doctorPhone || ""}</td><td>${application.doctorEmail || ""}</td><td>${application.specialty || application.doctorSpecialty || ""}</td><td>${application.doctorExperience || ""}</td><td>${application.doctorCvFile || ""}</td><td>${application.hospitalName || ""}</td><td>${application.jobType || ""}</td></tr>`).join("");
 }
 
 function getReportParams(limit = 200) {
