@@ -9,8 +9,8 @@
   <body>
     <header class="site-header">
       <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.png" alt="ST Jupiter Consultancy" /></a>
-      <nav class="nav-links"><a href="/">Website</a><a href="/crm">CRM</a></nav>
-      <div class="header-actions"><a class="header-call" href="/crm">Open CRM</a></div>
+      <nav class="nav-links"><a href="/">Website</a></nav>
+      <div class="header-actions"></div>
       <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </header>
     <main class="page-main auth-page">
@@ -23,8 +23,8 @@
         <form class="auth-card">
           <p class="section-kicker">Admin Access</p>
           <h2>Login to CRM</h2>
-          <label>Email<input type="email" name="loginEmail" placeholder="admin@stjupiter.com" required /></label>
-          <label>Password<input type="password" name="loginPassword" placeholder="Admin password" required /></label>
+          <label>Email<input type="email" name="loginEmail" placeholder="Admin email" autocomplete="username" required /></label>
+          <label>Password<input type="password" name="loginPassword" placeholder="Admin password" autocomplete="current-password" required /></label>
           <button class="btn primary" type="submit">Login</button>
         </form>
       </section>

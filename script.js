@@ -72,8 +72,13 @@ function getStoredUser() {
   }
 }
 
-function logout() {
+async function logout() {
   const user = getStoredUser();
+  try {
+    await fetch("/api/logout", { method: "POST" });
+  } catch {
+    // Local cleanup still happens if the network is unavailable.
+  }
   localStorage.removeItem("stj_token");
   localStorage.removeItem("stj_user");
   const adminArea = String(user?.accountType || "").toLowerCase() === "admin"

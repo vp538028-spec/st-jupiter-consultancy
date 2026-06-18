@@ -85,7 +85,7 @@ async function getDb() {
 
 async function ensureSeedData(db) {
   const adminEmail = cleanText(process.env.ADMIN_EMAIL || "admin@stjupiter.com").toLowerCase();
-  const adminPassword = String(process.env.ADMIN_PASSWORD || "admin12345");
+  const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(24).toString("base64url");
   const admin = await db.collection("users").findOne({ email: adminEmail });
 
   if (!admin) {
@@ -115,21 +115,55 @@ function resolveFile(urlPath) {
   return filePath.startsWith(root) ? filePath : path.join(root, "pages", "index.html");
 }
 
-function sendJson(res, status, data) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+function securityHeaders(extra = {}) {
+  return {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    ...extra
+  };
+}
+
+function noStoreHeaders(extra = {}) {
+  return securityHeaders({
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    Pragma: "no-cache",
+    Expires: "0",
+    ...extra
+  });
+}
+
+function sendJson(res, status, data, headers = {}) {
+  res.writeHead(status, securityHeaders({ "Content-Type": "application/json; charset=utf-8", ...headers }));
   res.end(JSON.stringify(data));
 }
 
 function sendText(res, status, contentType, data) {
-  res.writeHead(status, { "Content-Type": contentType });
+  res.writeHead(status, securityHeaders({ "Content-Type": contentType }));
   res.end(data);
 }
 
+function adminPagePathname(reqUrl) {
+  const pathname = decodeURIComponent((reqUrl || "/").split("?")[0]);
+  return ["/crm", "/crm-reports", "/pages/admin-dashboard.html", "/pages/admin-reports.html"].includes(pathname);
+}
+
 function sendFile(req, res) {
+  if (adminPagePathname(req.url) && !isAdmin(verifyToken(req))) {
+    const loginPath = path.join(root, "pages", "admin-login.html");
+    fs.readFile(loginPath, (error, data) => {
+      if (error) return sendText(res, 403, "text/html; charset=utf-8", "<h1>Admin login required</h1>");
+      res.writeHead(200, noStoreHeaders({ "Content-Type": "text/html; charset=utf-8" }));
+      res.end(data);
+    });
+    return;
+  }
+
   const filePath = resolveFile(req.url);
   fs.readFile(filePath, (error, data) => {
     if (error) {
-      res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(404, securityHeaders({ "Content-Type": "text/html; charset=utf-8" }));
       res.end("<h1>404</h1><p>Page not found.</p>");
       return;
     }
@@ -139,12 +173,13 @@ function sendFile(req, res) {
       const html = data.toString("utf8");
       const faviconMarkup = '<link rel="icon" type="image/png" href="/assets/logo.png" /><link rel="apple-touch-icon" href="/assets/logo.png" />';
       const output = html.includes('rel="icon"') ? html : html.replace("</head>", `    ${faviconMarkup}\n  </head>`);
-      res.writeHead(200, { "Content-Type": type });
+      const headers = adminPagePathname(req.url) ? noStoreHeaders({ "Content-Type": type }) : securityHeaders({ "Content-Type": type });
+      res.writeHead(200, headers);
       res.end(output);
       return;
     }
 
-    res.writeHead(200, { "Content-Type": type });
+    res.writeHead(200, securityHeaders({ "Content-Type": type }));
     res.end(data);
   });
 }
@@ -234,9 +269,28 @@ function createToken(user) {
   return `${payload}.${signature}`;
 }
 
+function cookieOptions(req) {
+  const secure = (req.headers["x-forwarded-proto"] || "").includes("https") || process.env.NODE_ENV === "production";
+  return `HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}${secure ? "; Secure" : ""}`;
+}
+
+function authCookie(req, token) {
+  return `stj_token=${encodeURIComponent(token)}; ${cookieOptions(req)}`;
+}
+
+function clearAuthCookie(req) {
+  const secure = (req.headers["x-forwarded-proto"] || "").includes("https") || process.env.NODE_ENV === "production";
+  return `stj_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure ? "; Secure" : ""}`;
+}
+
 function verifyToken(req) {
   const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const cookies = Object.fromEntries(String(req.headers.cookie || "").split(";").map((item) => {
+    const index = item.indexOf("=");
+    if (index === -1) return ["", ""];
+    return [item.slice(0, index).trim(), decodeURIComponent(item.slice(index + 1).trim())];
+  }).filter(([key]) => key));
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : cookies.stj_token || "";
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
 
@@ -519,7 +573,7 @@ async function handleApi(req, res) {
         redirect: accountType.toLowerCase() === "admin"
           ? "/crm"
           : "/pages/complete-profile.html"
-      });
+      }, { "Set-Cookie": authCookie(req, token) });
     }
 
     if (req.method === "POST" && req.url === "/api/login") {
@@ -544,7 +598,11 @@ async function handleApi(req, res) {
             : String(user.accountType || "").toLowerCase().includes("doctor")
             ? "/pages/doctor-dashboard.html"
             : "/pages/hospital-dashboard.html"
-      });
+      }, { "Set-Cookie": authCookie(req, token) });
+    }
+
+    if (req.method === "POST" && req.url === "/api/logout") {
+      return sendJson(res, 200, { message: "Logged out." }, { "Set-Cookie": clearAuthCookie(req) });
     }
 
     if (req.method === "GET" && req.url === "/api/me") {
