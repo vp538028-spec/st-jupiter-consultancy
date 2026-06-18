@@ -748,6 +748,12 @@ th {
   padding: 54px clamp(18px, 4vw, 64px);
 }
 
+.crm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .dashboard-top,
 .crm-top {
   margin-bottom: 34px;
@@ -773,6 +779,44 @@ th {
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
   margin-bottom: 16px;
+}
+
+.report-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.report-summary div {
+  display: grid;
+  gap: 6px;
+  min-height: 90px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.report-summary strong {
+  font-size: 28px;
+}
+
+.report-summary span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.report-grid {
+  display: grid;
+  gap: 22px;
 }
 
 .muted-text {
@@ -1040,6 +1084,11 @@ textarea {
   }
 
   .admin-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filters,
+  .report-summary {
     grid-template-columns: 1fr;
   }
 

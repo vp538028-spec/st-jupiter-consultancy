@@ -1,0 +1,125 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM Reports | ST Jupiter Consultancy</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="crm-body">
+    <main class="crm-shell" data-admin-reports>
+      <aside class="crm-sidebar">
+        <img class="dashboard-avatar" src="/assets/logo.png" alt="ST Jupiter CRM" />
+        <strong>ST Jupiter CRM</strong>
+        <nav>
+          <a href="/crm">Dashboard</a>
+          <a href="/crm-reports">Reports & Export</a>
+          <a href="/crm#jobs">Jobs</a>
+          <a href="/crm#applications">Applications</a>
+          <a href="/crm#users">Users</a>
+          <a href="/crm#contacts">Inquiries</a>
+          <button type="button" data-logout>Logout</button>
+        </nav>
+      </aside>
+      <section class="crm-main">
+        <div class="crm-top">
+          <p class="eyebrow">Reports</p>
+          <h1>Excel exports and date reports</h1>
+          <p>New data, old data, custom date range, and Excel download in one CRM page.</p>
+        </div>
+
+        <section class="admin-panel">
+          <div class="section-heading split">
+            <div>
+              <p class="section-kicker">Filter Reports</p>
+              <h2>Select range and dataset</h2>
+            </div>
+            <div class="crm-actions">
+              <button class="btn primary" type="button" data-export-current>Export Current Excel</button>
+              <button class="btn secondary" type="button" data-export-type="all">Export All Excel</button>
+            </div>
+          </div>
+
+          <div class="report-summary">
+            <div><strong data-report-users-count>0</strong><span>Users</span></div>
+            <div><strong data-report-jobs-count>0</strong><span>Jobs</span></div>
+            <div><strong data-report-contacts-count>0</strong><span>Inquiries</span></div>
+            <div><strong data-report-applications-count>0</strong><span>Applications</span></div>
+          </div>
+
+          <form class="report-filters" data-report-form>
+            <label>Dataset
+              <select name="dataset" data-report-dataset>
+                <option value="all">All Data</option>
+                <option value="jobs">Jobs</option>
+                <option value="applications">Applications</option>
+                <option value="users">Users</option>
+                <option value="contacts">Inquiries</option>
+              </select>
+            </label>
+            <label>Date Range
+              <select name="range" data-report-range>
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="last7">Last 7 Days</option>
+                <option value="last30">Last 30 Days</option>
+                <option value="thismonth">This Month</option>
+                <option value="custom">Custom Date</option>
+              </select>
+            </label>
+            <label>From
+              <input type="date" name="from" data-report-from />
+            </label>
+            <label>To
+              <input type="date" name="to" data-report-to />
+            </label>
+            <label>Order
+              <select name="order" data-report-order>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </label>
+            <button class="btn primary" type="submit">Apply Filters</button>
+          </form>
+        </section>
+
+        <div class="report-grid">
+          <section class="admin-panel" data-report-section="jobs">
+            <div class="section-heading split">
+              <div><p class="section-kicker">Jobs</p><h2>Job report preview</h2></div>
+              <button class="btn secondary" type="button" data-export-type="jobs">Export Jobs</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Specialty</th><th>Location</th><th>Job Type</th><th>Hospital</th><th>Date</th></tr></thead><tbody data-report-jobs></tbody></table></div>
+          </section>
+
+          <section class="admin-panel" data-report-section="applications">
+            <div class="section-heading split">
+              <div><p class="section-kicker">Applications</p><h2>Application report preview</h2></div>
+              <button class="btn secondary" type="button" data-export-type="applications">Export Applications</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Doctor</th><th>Specialty</th><th>Location</th><th>Hospital</th><th>Date</th></tr></thead><tbody data-report-applications></tbody></table></div>
+          </section>
+
+          <section class="admin-panel" data-report-section="users">
+            <div class="section-heading split">
+              <div><p class="section-kicker">Users</p><h2>User report preview</h2></div>
+              <button class="btn secondary" type="button" data-export-type="users">Export Users</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Account Type</th><th>Date</th></tr></thead><tbody data-report-users></tbody></table></div>
+          </section>
+
+          <section class="admin-panel" data-report-section="contacts">
+            <div class="section-heading split">
+              <div><p class="section-kicker">Inquiries</p><h2>Inquiry report preview</h2></div>
+              <button class="btn secondary" type="button" data-export-type="contacts">Export Inquiries</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Date</th></tr></thead><tbody data-report-contacts></tbody></table></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script src="/script.js"></script>
+  </body>
+</html>
+
+

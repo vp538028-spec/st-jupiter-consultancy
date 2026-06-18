@@ -6,6 +6,7 @@ const authForms = document.querySelectorAll(".auth-card");
 const dashboardRoot = document.querySelector("[data-dashboard]");
 const hospitalDashboardRoot = document.querySelector("[data-hospital-dashboard]");
 const adminRoot = document.querySelector("[data-admin-dashboard]");
+const adminReportsRoot = document.querySelector("[data-admin-reports]");
 const profilePage = document.querySelector("[data-profile-page]");
 const headerActions = document.querySelector(".header-actions");
 const doctorDirectoryRoot = document.querySelector("[data-doctor-directory]");
@@ -72,9 +73,14 @@ function getStoredUser() {
 }
 
 function logout() {
+  const user = getStoredUser();
   localStorage.removeItem("stj_token");
   localStorage.removeItem("stj_user");
-  window.location.href = "/pages/login.html";
+  const adminArea = String(user?.accountType || "").toLowerCase() === "admin"
+    || location.pathname === "/crm"
+    || location.pathname === "/crm-login"
+    || location.pathname === "/crm-reports";
+  window.location.href = adminArea ? "/crm-login" : "/pages/login.html";
 }
 
 function isLoggedIn() {
@@ -116,17 +122,32 @@ async function postJson(url, data, token) {
   return payload;
 }
 
+async function adminAction(url, token, data = {}) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || "Something went wrong.");
+  return payload;
+}
+
 function renderAuthHeader() {
   if (!headerActions) return;
 
   const token = localStorage.getItem("stj_token");
   const user = getStoredUser();
-  const isAuthPage = location.pathname.endsWith("/login.html") || location.pathname.endsWith("/register.html") || location.pathname.endsWith("/admin-login.html");
+  const isAdminAuthPage = location.pathname === "/crm-login" || location.pathname.endsWith("/admin-login.html");
+  const isAuthPage = location.pathname.endsWith("/login.html") || location.pathname.endsWith("/register.html") || isAdminAuthPage;
   if (!token || !user || isAuthPage) return;
 
   const accountType = String(user.accountType || "").toLowerCase();
   const dashboardHref = accountType === "admin"
-    ? "/pages/admin-dashboard.html"
+    ? "/crm"
     : accountType.includes("doctor")
       ? "/pages/doctor-dashboard.html"
       : "/pages/hospital-dashboard.html";
@@ -217,6 +238,11 @@ function escapeHtml(value) {
 
 function profileValue(profile, key, fallback = "Not added") {
   return escapeHtml(profile?.[key] || fallback);
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-IN");
 }
 
 function renderProfileSummary(container, user) {
@@ -372,7 +398,7 @@ authForms.forEach((form) => {
       localStorage.setItem("stj_user", JSON.stringify(result.user));
       setFormMessage(form, result.message);
       const returnTo = new URLSearchParams(location.search).get("returnTo");
-      const adminLogin = location.pathname.endsWith("/admin-login.html");
+      const adminLogin = location.pathname === "/crm-login" || location.pathname.endsWith("/admin-login.html");
       window.location.href = returnTo || (adminLogin ? "/crm" : result.redirect) || "/pages/doctor-dashboard.html";
     } catch (error) {
       setFormMessage(form, error.message, true);
@@ -412,7 +438,7 @@ async function loadDashboard() {
 
   const token = localStorage.getItem("stj_token");
   if (!token) {
-    window.location.href = "/pages/admin-login.html";
+    window.location.href = "/pages/login.html";
     return;
   }
 
@@ -621,7 +647,7 @@ async function loadAdminDashboard() {
 
   const token = localStorage.getItem("stj_token");
   if (!token) {
-    window.location.href = "/pages/login.html";
+    window.location.href = "/crm-login";
     return;
   }
 
@@ -640,7 +666,7 @@ async function loadAdminDashboard() {
     fillSelect(adminRoot.querySelector('[data-job-filter="jobType"]'), uniqueValues(data.jobs, "jobType", "All Job Types"));
     renderAdminTables();
   } catch (error) {
-    adminRoot.innerHTML = `<section class="page-hero"><p>${error.message}</p><a class="btn primary" href="/pages/admin-login.html">Admin Login</a></section>`;
+    adminRoot.innerHTML = `<section class="page-hero"><p>${error.message}</p><a class="btn primary" href="/crm-login">Admin Login</a></section>`;
   }
 }
 
@@ -670,10 +696,131 @@ function renderAdminTables() {
   const contacts = adminData.contacts.filter((contact) => matchesSearch(contact, contactsTerm));
   const applications = adminData.applications.filter((application) => matchesSearch(application, applicationsTerm));
 
-  adminRoot.querySelector("[data-admin-jobs]").innerHTML = jobs.map((job) => `<tr><td>${job.specialty || ""}</td><td>${job.location || ""}</td><td>${job.jobType || ""}</td><td>${job.hospitalName || ""}</td></tr>`).join("");
+  adminRoot.querySelector("[data-admin-jobs]").innerHTML = jobs.map((job) => `<tr><td>${job.specialty || ""}</td><td>${job.location || ""}</td><td>${job.jobType || ""}</td><td>${job.hospitalName || ""}</td><td><button class="btn compact" type="button" data-admin-job-delete="${job._id}">Delete</button></td></tr>`).join("");
   adminRoot.querySelector("[data-admin-users]").innerHTML = users.map((user) => `<tr><td>${user.name || ""}</td><td>${user.email || ""}</td><td>${user.accountType || ""}</td></tr>`).join("");
   adminRoot.querySelector("[data-admin-contacts]").innerHTML = contacts.map((contact) => `<tr><td>${contact.name || ""}</td><td>${contact.phone || ""}</td><td>${contact.role || ""}</td><td>${contact.message || ""}</td></tr>`).join("");
   adminRoot.querySelector("[data-admin-applications]").innerHTML = applications.map((application) => `<tr><td>${application.doctorEmail || ""}</td><td>${application.specialty || ""}</td><td>${application.location || ""}</td><td>${application.hospitalName || ""}</td><td>${application.jobType || ""}</td></tr>`).join("");
+}
+
+function getReportParams(limit = 200) {
+  const params = new URLSearchParams();
+  const form = adminReportsRoot?.querySelector("[data-report-form]");
+  const formData = form ? formToObject(form) : {};
+
+  params.set("dataset", formData.dataset || "all");
+  params.set("range", formData.range || "all");
+  params.set("order", formData.order || "newest");
+  params.set("limit", String(limit));
+
+  if (formData.from) params.set("from", formData.from);
+  if (formData.to) params.set("to", formData.to);
+  return params;
+}
+
+function toggleReportSections(dataset) {
+  if (!adminReportsRoot) return;
+  adminReportsRoot.querySelectorAll("[data-report-section]").forEach((section) => {
+    section.hidden = dataset !== "all" && section.getAttribute("data-report-section") !== dataset;
+  });
+}
+
+function syncReportDateFields() {
+  if (!adminReportsRoot) return;
+  const isCustom = adminReportsRoot.querySelector("[data-report-range]")?.value === "custom";
+  adminReportsRoot.querySelectorAll("[data-report-from], [data-report-to]").forEach((input) => {
+    input.disabled = !isCustom;
+  });
+}
+
+function renderReportRows(container, rows, type) {
+  if (!container) return;
+
+  if (!rows.length) {
+    container.innerHTML = `<tr><td colspan="5">No data found for selected filters.</td></tr>`;
+    return;
+  }
+
+  if (type === "jobs") {
+    container.innerHTML = rows.map((job) => `<tr><td>${job.specialty || ""}</td><td>${job.location || ""}</td><td>${job.jobType || ""}</td><td>${job.hospitalName || ""}</td><td>${formatDate(job.createdAt)}</td></tr>`).join("");
+  }
+
+  if (type === "applications") {
+    container.innerHTML = rows.map((application) => `<tr><td>${application.doctorEmail || ""}</td><td>${application.specialty || ""}</td><td>${application.location || ""}</td><td>${application.hospitalName || ""}</td><td>${formatDate(application.createdAt)}</td></tr>`).join("");
+  }
+
+  if (type === "users") {
+    container.innerHTML = rows.map((user) => `<tr><td>${user.name || ""}</td><td>${user.email || ""}</td><td>${user.accountType || ""}</td><td>${formatDate(user.createdAt)}</td></tr>`).join("");
+  }
+
+  if (type === "contacts") {
+    container.innerHTML = rows.map((contact) => `<tr><td>${contact.name || ""}</td><td>${contact.phone || ""}</td><td>${contact.role || ""}</td><td>${formatDate(contact.createdAt)}</td></tr>`).join("");
+  }
+}
+
+async function downloadAdminExport(dataset) {
+  const token = localStorage.getItem("stj_token");
+  if (!token) {
+    window.location.href = "/crm-login";
+    return;
+  }
+
+  const params = adminReportsRoot ? getReportParams(5000) : new URLSearchParams({ dataset: dataset || "all", range: "all", order: "newest", limit: "5000" });
+  if (dataset) params.set("dataset", dataset);
+
+  const response = await fetch(`/api/admin/export?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Export failed.");
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match?.[1] || `st-jupiter-${dataset || "all"}.xls`;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function loadAdminReports() {
+  if (!adminReportsRoot) return;
+
+  const token = localStorage.getItem("stj_token");
+  if (!token) {
+    window.location.href = "/crm-login";
+    return;
+  }
+
+  try {
+    syncReportDateFields();
+    const params = getReportParams(200);
+    const response = await fetch(`/api/admin/overview?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Admin login required.");
+
+    adminReportsRoot.querySelector("[data-report-users-count]").textContent = data.stats.users || 0;
+    adminReportsRoot.querySelector("[data-report-jobs-count]").textContent = data.stats.jobs || 0;
+    adminReportsRoot.querySelector("[data-report-contacts-count]").textContent = data.stats.contacts || 0;
+    adminReportsRoot.querySelector("[data-report-applications-count]").textContent = data.stats.applications || 0;
+
+    renderReportRows(adminReportsRoot.querySelector("[data-report-jobs]"), data.jobs || [], "jobs");
+    renderReportRows(adminReportsRoot.querySelector("[data-report-applications]"), data.applications || [], "applications");
+    renderReportRows(adminReportsRoot.querySelector("[data-report-users]"), data.users || [], "users");
+    renderReportRows(adminReportsRoot.querySelector("[data-report-contacts]"), data.contacts || [], "contacts");
+    toggleReportSections(params.get("dataset") || "all");
+  } catch (error) {
+    adminReportsRoot.innerHTML = `<section class="page-hero"><p>${error.message}</p><a class="btn primary" href="/crm-login">Admin Login</a></section>`;
+  }
 }
 
 adminRoot?.addEventListener("input", (event) => {
@@ -684,6 +831,77 @@ adminRoot?.addEventListener("change", (event) => {
   if (event.target.matches("[data-job-filter]")) renderAdminTables();
 });
 
+adminRoot?.addEventListener("click", async (event) => {
+  const actionButton = event.target.closest("[data-admin-action]");
+  if (actionButton?.getAttribute("data-admin-action") === "cleanup-demo") {
+    try {
+      const result = await adminAction("/api/admin/cleanup-demo", localStorage.getItem("stj_token"));
+      alert(result.message);
+      await loadAdminDashboard();
+    } catch (error) {
+      alert(error.message);
+    }
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-admin-job-delete]");
+  if (deleteButton) {
+    try {
+      const result = await adminAction("/api/admin/delete-job", localStorage.getItem("stj_token"), {
+        jobId: deleteButton.getAttribute("data-admin-job-delete")
+      });
+      alert(result.message);
+      await loadAdminDashboard();
+    } catch (error) {
+      alert(error.message);
+    }
+    return;
+  }
+
+  const button = event.target.closest("[data-export-type]");
+  if (!button) return;
+  try {
+    await downloadAdminExport(button.getAttribute("data-export-type"));
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+adminReportsRoot?.querySelector("[data-report-form]")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await loadAdminReports();
+});
+
+adminReportsRoot?.addEventListener("change", async (event) => {
+  if (event.target.matches("[data-report-range]")) {
+    syncReportDateFields();
+  }
+
+  if (event.target.matches("[data-report-dataset]")) {
+    toggleReportSections(event.target.value);
+  }
+});
+
+adminReportsRoot?.addEventListener("click", async (event) => {
+  const currentButton = event.target.closest("[data-export-current]");
+  if (currentButton) {
+    try {
+      await downloadAdminExport(adminReportsRoot.querySelector("[data-report-dataset]")?.value || "all");
+    } catch (error) {
+      alert(error.message);
+    }
+    return;
+  }
+
+  const exportButton = event.target.closest("[data-export-type]");
+  if (!exportButton) return;
+  try {
+    await downloadAdminExport(exportButton.getAttribute("data-export-type"));
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
 renderAuthHeader();
 upgradeJobSearchForms();
 wireJobSearchForms();
@@ -692,4 +910,5 @@ loadDashboard();
 loadHospitalDashboard();
 setupProfilePage();
 loadAdminDashboard();
+loadAdminReports();
 loadDoctorDirectory();

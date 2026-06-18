@@ -11,24 +11,16 @@ const root = __dirname;
 const mongoUri = process.env.MONGODB_URI || "";
 const dbName = process.env.MONGODB_DB || "st-jupiter";
 const tokenSecret = process.env.TOKEN_SECRET || crypto.createHash("sha256").update(mongoUri || "st-jupiter").digest("hex");
+const faviconPath = path.join(root, "assets", "logo.png");
 
 let dbPromise;
-
-const seedJobs = [
-  { hospitalName: "New York Heart Center", email: "hr@nyheart.example", specialty: "Cardiologist", location: "New York, USA", jobType: "Full-time", message: "Cardiology OPD and emergency coverage requirement." },
-  { hospitalName: "California Surgical Group", email: "hr@casurgery.example", specialty: "Surgeon", location: "California, USA", jobType: "Full-time", message: "General surgeon required for multi-specialty hospital." },
-  { hospitalName: "Texas Radiology Network", email: "hr@txradio.example", specialty: "Radiologist", location: "Texas, USA", jobType: "Part-time", message: "MRI, CT, and diagnostic reporting support." },
-  { hospitalName: "Florida Medical Center", email: "hr@flmedical.example", specialty: "Physician", location: "Florida, USA", jobType: "Locum", message: "Internal medicine physician for locum coverage." },
-  { hospitalName: "Chicago Children's Hospital", email: "hr@chchildren.example", specialty: "Pediatrician", location: "Illinois, USA", jobType: "Full-time", message: "Pediatric OPD and ward round requirement." },
-  { hospitalName: "Boston Neuro Care", email: "hr@bostonneuro.example", specialty: "Neurologist", location: "Massachusetts, USA", jobType: "Full-time", message: "Neurology consultant with stroke care experience." },
-  { hospitalName: "Seattle Women's Health", email: "hr@seattlewomen.example", specialty: "Gynecologist", location: "Washington, USA", jobType: "Full-time", message: "Gynecology consultant for women care unit." },
-  { hospitalName: "Arizona Emergency Care", email: "hr@azemergency.example", specialty: "Emergency Physician", location: "Arizona, USA", jobType: "Contract", message: "Emergency medicine doctor for rotational shifts." }
-];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -55,13 +47,27 @@ function loadEnv() {
     });
 }
 
+function envFlag(name, defaultValue = false) {
+  const value = process.env[name];
+  if (value == null) return defaultValue;
+  return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
+}
+
 async function getDb() {
   if (!mongoUri) {
     throw new Error("MONGODB_URI is missing");
   }
 
   if (!dbPromise) {
-    const client = new MongoClient(mongoUri);
+    const client = new MongoClient(mongoUri, {
+      serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000),
+      connectTimeoutMS: Number(process.env.MONGODB_CONNECT_TIMEOUT_MS || 5000),
+      socketTimeoutMS: Number(process.env.MONGODB_SOCKET_TIMEOUT_MS || 10000),
+      tls: envFlag("MONGODB_TLS", true),
+      family: Number(process.env.MONGODB_IP_FAMILY || 4),
+      tlsAllowInvalidCertificates: envFlag("MONGODB_TLS_ALLOW_INVALID_CERTIFICATES", false),
+      tlsAllowInvalidHostnames: envFlag("MONGODB_TLS_ALLOW_INVALID_HOSTNAMES", false)
+    });
     dbPromise = client.connect().then(async () => {
       const db = client.db(dbName);
       await db.collection("users").createIndex({ email: 1 }, { unique: true });
@@ -92,22 +98,14 @@ async function ensureSeedData(db) {
     });
   }
 
-  const seedCount = await db.collection("jobs").countDocuments({ seeded: true });
-  if (seedCount === 0) {
-    await db.collection("jobs").insertMany(
-      seedJobs.map((job) => ({
-        ...job,
-        seeded: true,
-        createdAt: new Date()
-      }))
-    );
-  }
 }
 
 function resolveFile(urlPath) {
   const cleanPath = decodeURIComponent((urlPath || "/").split("?")[0]);
+  if (cleanPath === "/favicon.ico") return faviconPath;
   if (cleanPath === "/crm") return path.join(root, "pages", "admin-dashboard.html");
   if (cleanPath === "/crm-login") return path.join(root, "pages", "admin-login.html");
+  if (cleanPath === "/crm-reports") return path.join(root, "pages", "admin-reports.html");
   const safePath = path.normalize(cleanPath).replace(/^(\.\.[/\\])+/, "");
   const requested =
     cleanPath === "/" || safePath === "/" || safePath === "\\" || safePath === "." || safePath === ""
@@ -122,6 +120,11 @@ function sendJson(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
+function sendText(res, status, contentType, data) {
+  res.writeHead(status, { "Content-Type": contentType });
+  res.end(data);
+}
+
 function sendFile(req, res) {
   const filePath = resolveFile(req.url);
   fs.readFile(filePath, (error, data) => {
@@ -132,9 +135,57 @@ function sendFile(req, res) {
     }
 
     const type = mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream";
+    if (type.startsWith("text/html")) {
+      const html = data.toString("utf8");
+      const faviconMarkup = '<link rel="icon" type="image/png" href="/assets/logo.png" /><link rel="apple-touch-icon" href="/assets/logo.png" />';
+      const output = html.includes('rel="icon"') ? html : html.replace("</head>", `    ${faviconMarkup}\n  </head>`);
+      res.writeHead(200, { "Content-Type": type });
+      res.end(output);
+      return;
+    }
+
     res.writeHead(200, { "Content-Type": type });
     res.end(data);
   });
+}
+
+function getBaseUrl(req) {
+  if (process.env.SITE_URL) return process.env.SITE_URL.replace(/\/+$/, "");
+  const proto = req.headers["x-forwarded-proto"] || "http";
+  const host = req.headers.host || `localhost:${port}`;
+  return `${proto}://${host}`;
+}
+
+function buildSitemap(baseUrl) {
+  const routes = [
+    "/",
+    "/pages/about.html",
+    "/pages/jobs.html",
+    "/pages/hospitals.html",
+    "/pages/doctors.html",
+    "/pages/services.html",
+    "/pages/success-stories.html",
+    "/pages/blog.html",
+    "/pages/contact.html",
+    "/pages/post-job.html"
+  ];
+  const lastmod = new Date().toISOString().slice(0, 10);
+  const urls = routes.map((route) => {
+    return `<url><loc>${xmlEscape(`${baseUrl}${route}`)}</loc><lastmod>${lastmod}</lastmod></url>`;
+  }).join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+}
+
+function buildRobots(baseUrl) {
+  return `User-agent: *
+Allow: /
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
 }
 
 function readBody(req) {
@@ -218,6 +269,173 @@ function isAdmin(authUser) {
   return String(authUser?.accountType || "").toLowerCase() === "admin";
 }
 
+function startOfDay(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function endOfDay(date) {
+  const value = new Date(date);
+  value.setHours(23, 59, 59, 999);
+  return value;
+}
+
+function parseAdminOptions(reqUrl, defaultLimit = 100) {
+  const url = new URL(reqUrl, "http://localhost");
+  const dataset = cleanText(url.searchParams.get("dataset") || "all").toLowerCase();
+  const range = cleanText(url.searchParams.get("range") || "all").toLowerCase();
+  const from = cleanText(url.searchParams.get("from"));
+  const to = cleanText(url.searchParams.get("to"));
+  const order = cleanText(url.searchParams.get("order") || "newest").toLowerCase();
+  const limitValue = Number(url.searchParams.get("limit") || defaultLimit);
+  const limit = Number.isFinite(limitValue) && limitValue > 0 ? Math.min(limitValue, 5000) : defaultLimit;
+  return { dataset, range, from, to, order, limit };
+}
+
+function buildCreatedAtFilter({ range, from, to }) {
+  const now = new Date();
+  let start;
+  let end;
+
+  if (range === "today") {
+    start = startOfDay(now);
+    end = endOfDay(now);
+  } else if (range === "last7") {
+    start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
+    end = endOfDay(now);
+  } else if (range === "last30") {
+    start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
+    end = endOfDay(now);
+  } else if (range === "thismonth") {
+    start = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+    end = endOfDay(now);
+  } else if (range === "custom") {
+    if (from) start = startOfDay(new Date(from));
+    if (to) end = endOfDay(new Date(to));
+  }
+
+  const filter = {};
+  if (start && !Number.isNaN(start.getTime())) filter.$gte = start;
+  if (end && !Number.isNaN(end.getTime())) filter.$lte = end;
+  return Object.keys(filter).length ? filter : null;
+}
+
+function getAdminQuery(options) {
+  const createdAt = buildCreatedAtFilter(options);
+  return createdAt ? { createdAt } : {};
+}
+
+async function fetchAdminCollection(db, collectionName, query, sortDirection, limit) {
+  const options = collectionName === "users" ? { projection: { passwordHash: 0 } } : {};
+  let cursor = db.collection(collectionName).find(query, options).sort({ createdAt: sortDirection });
+  if (limit > 0) cursor = cursor.limit(limit);
+  return cursor.toArray();
+}
+
+function xmlEscape(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function exportValue(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return value == null ? "" : String(value);
+}
+
+function worksheetXml(name, columns, rows) {
+  const header = columns.map((column) => `<Cell ss:StyleID="header"><Data ss:Type="String">${xmlEscape(column.label)}</Data></Cell>`).join("");
+  const body = rows.map((row) => {
+    const cells = columns.map((column) => `<Cell><Data ss:Type="String">${xmlEscape(exportValue(column.value(row)))}</Data></Cell>`).join("");
+    return `<Row>${cells}</Row>`;
+  }).join("");
+
+  return `
+    <Worksheet ss:Name="${xmlEscape(name.slice(0, 31))}">
+      <Table>
+        <Row>${header}</Row>
+        ${body}
+      </Table>
+    </Worksheet>
+  `;
+}
+
+function buildExcelWorkbook(sheets) {
+  return `<?xml version="1.0"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="header">
+      <Font ss:Bold="1"/>
+      <Interior ss:Color="#E6F4F0" ss:Pattern="Solid"/>
+    </Style>
+  </Styles>
+  ${sheets.join("")}
+</Workbook>`;
+}
+
+function sendExcel(res, filename, workbook) {
+  res.writeHead(200, {
+    "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Cache-Control": "no-store"
+  });
+  res.end(workbook);
+}
+
+const adminExportColumns = {
+  users: [
+    { label: "Name", value: (row) => row.name },
+    { label: "Email", value: (row) => row.email },
+    { label: "Account Type", value: (row) => row.accountType },
+    { label: "Profile Complete", value: (row) => row.profileComplete ? "Yes" : "No" },
+    { label: "Specialty", value: (row) => row.profile?.specialty || "" },
+    { label: "Location", value: (row) => row.profile?.location || "" },
+    { label: "Experience", value: (row) => row.profile?.experience || "" },
+    { label: "Qualification", value: (row) => row.profile?.qualification || "" },
+    { label: "Resume Note", value: (row) => row.profile?.resumeNote || "" },
+    { label: "CV File", value: (row) => row.assets?.cv?.name || "" },
+    { label: "CV Uploaded At", value: (row) => row.assets?.cv?.uploadedAt || "" },
+    { label: "Profile Image", value: (row) => row.assets?.profileImage?.name || "" },
+    { label: "Created At", value: (row) => row.createdAt }
+  ],
+  jobs: [
+    { label: "Hospital", value: (row) => row.hospitalName },
+    { label: "Email", value: (row) => row.email },
+    { label: "Specialty", value: (row) => row.specialty },
+    { label: "Location", value: (row) => row.location },
+    { label: "Job Type", value: (row) => row.jobType },
+    { label: "Requirement", value: (row) => row.message },
+    { label: "Created At", value: (row) => row.createdAt }
+  ],
+  contacts: [
+    { label: "Name", value: (row) => row.name },
+    { label: "Phone", value: (row) => row.phone },
+    { label: "Role", value: (row) => row.role },
+    { label: "Message", value: (row) => row.message },
+    { label: "Created At", value: (row) => row.createdAt }
+  ],
+  applications: [
+    { label: "Doctor Email", value: (row) => row.doctorEmail },
+    { label: "Doctor Type", value: (row) => row.doctorType },
+    { label: "Specialty", value: (row) => row.specialty },
+    { label: "Hospital", value: (row) => row.hospitalName },
+    { label: "Location", value: (row) => row.location },
+    { label: "Job Type", value: (row) => row.jobType },
+    { label: "Message", value: (row) => row.message },
+    { label: "Created At", value: (row) => row.createdAt }
+  ]
+};
+
 async function handleApi(req, res) {
   try {
     const db = await getDb();
@@ -249,7 +467,7 @@ async function handleApi(req, res) {
         token,
         user: { name, email, accountType, profileComplete: false },
         redirect: accountType.toLowerCase() === "admin"
-          ? "/pages/admin-dashboard.html"
+          ? "/crm"
           : "/pages/complete-profile.html"
       });
     }
@@ -270,7 +488,7 @@ async function handleApi(req, res) {
         token,
         user: { name: user.name, email: user.email, accountType: user.accountType, profileComplete: Boolean(user.profileComplete) },
         redirect: String(user.accountType || "").toLowerCase() === "admin"
-          ? "/pages/admin-dashboard.html"
+          ? "/crm"
           : !user.profileComplete
             ? "/pages/complete-profile.html"
             : String(user.accountType || "").toLowerCase().includes("doctor")
@@ -426,24 +644,32 @@ async function handleApi(req, res) {
       return sendJson(res, 201, { message: "Job posted successfully." });
     }
 
-    if (req.method === "GET" && req.url === "/api/admin/overview") {
+    if (req.method === "GET" && req.url.startsWith("/api/admin/overview")) {
       const authUser = verifyToken(req);
       if (!isAdmin(authUser)) return sendJson(res, 403, { message: "Admin login required." });
+      const options = parseAdminOptions(req.url, 100);
+      const query = getAdminQuery(options);
+      const sortDirection = options.order === "oldest" ? 1 : -1;
 
-      const [users, jobs, contacts, applications] = await Promise.all([
-        db.collection("users").find({}, { projection: { passwordHash: 0 } }).sort({ createdAt: -1 }).limit(100).toArray(),
-        db.collection("jobs").find({}).sort({ createdAt: -1 }).limit(100).toArray(),
-        db.collection("contacts").find({}).sort({ createdAt: -1 }).limit(100).toArray(),
-        db.collection("applications").find({}).sort({ createdAt: -1 }).limit(100).toArray()
+      const [users, jobs, contacts, applications, userCount, jobCount, contactCount, applicationCount] = await Promise.all([
+        fetchAdminCollection(db, "users", query, sortDirection, options.limit),
+        fetchAdminCollection(db, "jobs", query, sortDirection, options.limit),
+        fetchAdminCollection(db, "contacts", query, sortDirection, options.limit),
+        fetchAdminCollection(db, "applications", query, sortDirection, options.limit),
+        db.collection("users").countDocuments(query),
+        db.collection("jobs").countDocuments(query),
+        db.collection("contacts").countDocuments(query),
+        db.collection("applications").countDocuments(query)
       ]);
 
       return sendJson(res, 200, {
         stats: {
-          users: users.length,
-          jobs: jobs.length,
-          contacts: contacts.length,
-          applications: applications.length
+          users: userCount,
+          jobs: jobCount,
+          contacts: contactCount,
+          applications: applicationCount
         },
+        filters: options,
         users,
         jobs,
         contacts,
@@ -451,16 +677,89 @@ async function handleApi(req, res) {
       });
     }
 
+    if (req.method === "GET" && req.url.startsWith("/api/admin/export")) {
+      const authUser = verifyToken(req);
+      if (!isAdmin(authUser)) return sendJson(res, 403, { message: "Admin login required." });
+
+      const options = parseAdminOptions(req.url, 5000);
+      const query = getAdminQuery(options);
+      const sortDirection = options.order === "oldest" ? 1 : -1;
+      const datasetOrder = ["jobs", "applications", "users", "contacts"];
+      const selectedDatasets = options.dataset === "all" || !adminExportColumns[options.dataset]
+        ? datasetOrder
+        : [options.dataset];
+
+      const records = await Promise.all(
+        selectedDatasets.map((dataset) => fetchAdminCollection(db, dataset, query, sortDirection, options.limit))
+      );
+
+      const sheets = selectedDatasets.map((dataset, index) => {
+        const title = dataset.charAt(0).toUpperCase() + dataset.slice(1);
+        return worksheetXml(title, adminExportColumns[dataset], records[index]);
+      });
+
+      const workbook = buildExcelWorkbook(sheets);
+      const filename = `st-jupiter-${options.dataset || "all"}-${Date.now()}.xls`;
+      return sendExcel(res, filename, workbook);
+    }
+
+    if (req.method === "POST" && req.url === "/api/admin/cleanup-demo") {
+      const authUser = verifyToken(req);
+      if (!isAdmin(authUser)) return sendJson(res, 403, { message: "Admin login required." });
+
+      const result = await db.collection("jobs").deleteMany({ seeded: true });
+      return sendJson(res, 200, {
+        message: result.deletedCount
+          ? `${result.deletedCount} demo jobs removed.`
+          : "No seeded demo jobs found.",
+        deletedCount: result.deletedCount
+      });
+    }
+
+    if (req.method === "POST" && req.url === "/api/admin/delete-job") {
+      const authUser = verifyToken(req);
+      if (!isAdmin(authUser)) return sendJson(res, 403, { message: "Admin login required." });
+
+      const body = await readBody(req);
+      const jobId = cleanText(body.jobId);
+      if (!ObjectId.isValid(jobId)) {
+        return sendJson(res, 400, { message: "Valid job id is required." });
+      }
+
+      const result = await db.collection("jobs").deleteOne({ _id: new ObjectId(jobId) });
+      if (!result.deletedCount) {
+        return sendJson(res, 404, { message: "Job not found." });
+      }
+
+      return sendJson(res, 200, { message: "Job deleted successfully." });
+    }
+
     return sendJson(res, 404, { message: "API route not found." });
   } catch (error) {
     const duplicate = error && error.code === 11000;
+    const dbUnavailable = error?.name === "MongoServerSelectionError";
+    const tlsIssue = /tlsv1 alert internal error|ssl routines|certificate/i.test(String(error?.message || ""));
     sendJson(res, duplicate ? 409 : 500, {
-      message: duplicate ? "This email is already registered." : error.message || "Server error."
+      message: duplicate
+        ? "This email is already registered."
+        : tlsIssue
+          ? "MongoDB TLS connection failed. Check Node version, Atlas IP allowlist, and hosting SSL support."
+          : dbUnavailable
+            ? "Database connection failed. Check MongoDB URI and Atlas network access."
+          : error.message || "Server error."
     });
   }
 }
 
 const server = http.createServer((req, res) => {
+  if (req.url === "/sitemap.xml") {
+    return sendText(res, 200, "application/xml; charset=utf-8", buildSitemap(getBaseUrl(req)));
+  }
+
+  if (req.url === "/robots.txt") {
+    return sendText(res, 200, "text/plain; charset=utf-8", buildRobots(getBaseUrl(req)));
+  }
+
   if ((req.url || "").startsWith("/api/")) {
     handleApi(req, res);
     return;

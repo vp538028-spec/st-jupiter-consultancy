@@ -20,12 +20,12 @@ const rootFiles = fs.readdirSync(root);
 rootFiles.forEach((file) => {
   const filePath = path.join(root, file);
   const stat = fs.statSync(filePath);
-  if (stat.isFile()) {
-    const ext = path.extname(file).toLowerCase();
-    if ([".html", ".css", ".js", ".json"].includes(ext)) {
-      fs.copyFileSync(filePath, path.join(dist, file));
+    if (stat.isFile()) {
+      const ext = path.extname(file).toLowerCase();
+      if ([".html", ".css", ".js", ".json", ".xml", ".txt"].includes(ext)) {
+        fs.copyFileSync(filePath, path.join(dist, file));
+      }
     }
-  }
 });
 
 // Helper function to recursively copy directories

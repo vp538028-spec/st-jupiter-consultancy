@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -13,6 +13,7 @@
         <strong>ST Jupiter CRM</strong>
         <nav>
           <a href="#stats">Dashboard</a>
+          <a href="/crm-reports">Reports & Export</a>
           <a href="#jobs">Jobs</a>
           <a href="#applications">Applications</a>
           <a href="#users">Users</a>
@@ -25,6 +26,11 @@
           <p class="eyebrow">Admin CRM</p>
           <h1>Website data management</h1>
           <p>Only website data, jobs, users, applications, and inquiries.</p>
+          <div class="crm-actions">
+            <a class="btn secondary" href="/crm-reports">Open Reports</a>
+            <button class="btn primary" type="button" data-export-type="all">Export All Excel</button>
+            <button class="btn secondary" type="button" data-admin-action="cleanup-demo">Remove Demo Jobs</button>
+          </div>
         </div>
         <section class="admin-stats">
           <div class="hero-stats">
@@ -35,22 +41,22 @@
           </div>
         </section>
         <section class="admin-panel" id="jobs">
-          <div class="section-heading split"><div><p class="section-kicker">Jobs CRM</p><h2>Posted requirements</h2></div><a class="btn primary" href="/pages/post-job.html">Add Job</a></div>
+          <div class="section-heading split"><div><p class="section-kicker">Jobs CRM</p><h2>Posted requirements</h2></div><div class="crm-actions"><button class="btn secondary" type="button" data-export-type="jobs">Export Excel</button><a class="btn primary" href="/pages/post-job.html">Add Job</a></div></div>
           <div class="admin-filters"><input type="search" data-table-filter="jobs" placeholder="Search jobs, hospital, location..." /><select data-job-filter="specialty"><option>All Specialties</option></select><select data-job-filter="location"><option>All Locations</option></select><select data-job-filter="jobType"><option>All Job Types</option></select></div>
-          <div class="table-wrap"><table><thead><tr><th>Specialty</th><th>Location</th><th>Job Type</th><th>Hospital</th></tr></thead><tbody data-admin-jobs></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Specialty</th><th>Location</th><th>Job Type</th><th>Hospital</th><th>Action</th></tr></thead><tbody data-admin-jobs></tbody></table></div>
         </section>
         <section class="admin-panel" id="applications">
-          <div class="section-heading"><p class="section-kicker">Applications</p><h2>Doctor apply requests</h2></div>
+          <div class="section-heading split"><div><p class="section-kicker">Applications</p><h2>Doctor apply requests</h2></div><button class="btn secondary" type="button" data-export-type="applications">Export Excel</button></div>
           <div class="admin-filters"><input type="search" data-table-filter="applications" placeholder="Search applications, doctor, hospital..." /></div>
           <div class="table-wrap"><table><thead><tr><th>Doctor</th><th>Specialty</th><th>Location</th><th>Hospital</th><th>Job Type</th></tr></thead><tbody data-admin-applications></tbody></table></div>
         </section>
         <section class="admin-panel" id="users">
-          <div class="section-heading"><p class="section-kicker">Users</p><h2>Registered accounts</h2></div>
+          <div class="section-heading split"><div><p class="section-kicker">Users</p><h2>Registered accounts</h2></div><button class="btn secondary" type="button" data-export-type="users">Export Excel</button></div>
           <div class="admin-filters"><input type="search" data-table-filter="users" placeholder="Search users, email, account type..." /></div>
           <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Account Type</th></tr></thead><tbody data-admin-users></tbody></table></div>
         </section>
         <section class="admin-panel" id="contacts">
-          <div class="section-heading"><p class="section-kicker">Inquiries</p><h2>Contact requests</h2></div>
+          <div class="section-heading split"><div><p class="section-kicker">Inquiries</p><h2>Contact requests</h2></div><button class="btn secondary" type="button" data-export-type="contacts">Export Excel</button></div>
           <div class="admin-filters"><input type="search" data-table-filter="contacts" placeholder="Search inquiries, phone, role, message..." /></div>
           <div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Message</th></tr></thead><tbody data-admin-contacts></tbody></table></div>
         </section>
@@ -59,3 +65,5 @@
     <script src="/script.js"></script>
   </body>
 </html>
+
+
